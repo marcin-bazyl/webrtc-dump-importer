@@ -372,8 +372,11 @@ function processTraceEvent(table, event) {
     }
     details.appendChild(el);
     el = document.createElement('td');
-    el.appendChild(details);
-
+    if (event.value !== '') {
+        el.appendChild(details);
+    } else {
+        el.innerText = event.type;
+    }
     row.appendChild(el);
 
     // guess what, if the event type ends with 'Failure' one could use css to highlight it
