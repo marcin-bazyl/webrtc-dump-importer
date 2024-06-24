@@ -79,7 +79,7 @@ function createCandidateTable(container, allStats) {
         row.appendChild(el);
 
         el = document.createElement('td');
-        el.innerText = transports[t].selectedCandidatePairId;
+        el.innerText = transports[t].selectedCandidatePairId || '(none)';
         row.appendChild(el);
 
         for (let i = 2; i < head.childElementCount; i++) {
@@ -240,7 +240,7 @@ function createContainers(connid, url) {
     return container;
 }
 
-function processGUM(data) {
+function processGetUserMedia(data) {
     const container = document.createElement('details');
     container.open = true;
     container.style.margin = '10px';
@@ -278,7 +278,7 @@ function processGUM(data) {
     data.forEach(event => {
         const id = ['gum-row', event.pid, event.rid, event.request_id].join('-');
         if (!event.origin) {
-            // Not a getUserMedia call but a response.
+            // Not a getUserMedia call but a response, update the row with the request.
             const existingRow = document.getElementById(id);
             if (event.error) {
                 existingRow.childNodes[8].innerText = event.error;
@@ -293,11 +293,11 @@ function processGUM(data) {
             }
             return;
         }
+        // Add a new row for the getUserMedia request.
         const row = document.createElement('tr');
         row.id = id;
         columns.forEach(attribute => {
             const cell = document.createElement('td');
-            // getUserMedia request.
             if (['audio', 'video'].includes(attribute)) {
                 cell.innerText = event.hasOwnProperty(attribute) ? (event[attribute] || 'true') : 'not set';
             } else {
@@ -309,7 +309,7 @@ function processGUM(data) {
     });
 }
 
-function processTraceEvent(table, event) {
+function processTraceEvent(event) {
     const row = document.createElement('tr');
     let el = document.createElement('td');
     el.setAttribute('nowrap', '');
@@ -379,13 +379,12 @@ function processTraceEvent(table, event) {
     }
     row.appendChild(el);
 
-    // guess what, if the event type ends with 'Failure' one could use css to highlight it
+    // If the event type ends with 'Failure' hightlight it
     if (event.type.endsWith('Failure')) {
         row.style.backgroundColor = 'red';
     }
-
-
-    if (event.type === 'iceconnectionstatechange' || event.type === 'connectionstatechange') {
+    // Likewise, highlight (ice)connectionstates.
+    if (['iceconnectionstatechange', 'connectionstatechange'].includes(event.type)) {
         switch(event.value) {
         case 'connected':
         case 'completed':
@@ -396,7 +395,7 @@ function processTraceEvent(table, event) {
             break;
         }
     }
-    table.appendChild(row);
+    return row;
 }
 
 const graphs = {};
@@ -406,7 +405,7 @@ function importUpdatesAndStats(data) {
     document.getElementById('tables').style.display = 'block';
 
     // FIXME: also display GUM calls (can they be correlated to addStream?)
-    processGUM(data.getUserMedia);
+    processGetUserMedia(data.getUserMedia);
 
     // first, display the updateLog
     for (connid in data.PeerConnections) {
@@ -420,7 +419,7 @@ function importUpdatesAndStats(data) {
         document.getElementById('tables').appendChild(container);
 
         connection.updateLog.forEach(event => {
-            processTraceEvent(containers[connid].updateLog, event);
+            containers[connid].updateLog.appendChild(processTraceEvent(event));
         });
         connection.updateLog.forEach(event => {
             // update state displays
