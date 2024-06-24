@@ -324,14 +324,23 @@ function processTraceEvent(event) {
 
     if (event.type === 'icecandidate' || event.type === 'addIceCandidate') {
         if (event.value) {
-            const parts = event.value.split(', ');
-            el.innerText += ' (' + parts[0] + ' ' + parts[1];
-            const candidate = SDPUtils.parseCandidate(parts[2].substr(11).trim());
-            if (candidate) {
-                el.innerText += ', type:' + candidate.type;
-                el.innerText += ', port:' + candidate.port;
-            }
-            el.innerText += ')';
+            const parts = event.value.split(', ')
+                .map(part => part.split(': '));
+            const toShow = [];
+            parts.forEach(part => {
+                if (['sdpMid', 'sdpMLineIndex'].includes(part[0])) {
+                    toShow.push(part.join(': '));
+                } else if (part[0] === 'candidate') {
+                    const candidate = SDPUtils.parseCandidate(part[1].trim());
+                    if (candidate) {
+                        toShow.push('port:' + candidate.port);
+                        toShow.push('type: ' + candidate.type);
+                    }
+                } else if (part[0] === 'relayProtocol') {
+                    toShow.push('relayProtocol: ' + part[1]);
+                }
+            });
+            el.innerText += ' (' + toShow.join(', ') + ')';
         }
     }
     if (event.value.indexOf(', sdp: ') != -1) {
