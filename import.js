@@ -1,3 +1,4 @@
+const SDPUtils = adapter.sdp;
 function doImport(evt) {
   evt.target.disabled = true;
   document.getElementById('useReferenceTime').disabled = true;
