@@ -463,6 +463,17 @@ function importUpdatesAndStats(data) {
     processConnections(Object.keys(data.PeerConnections), data);
 }
 
+function isDataConstant(data) {
+    let value = data[0][1];
+
+    for (let i = 1; i < data.length; i++) {
+        if (data[i][1] !== value) {
+            return false;
+        }
+    }
+    return true;
+}
+
 function processConnections(connectionIds, data) {
     const connid = connectionIds.shift();
     if (!connid) return;
@@ -520,6 +531,9 @@ function processConnections(connectionIds, data) {
         const series = [];
         series.statsType = statsType;
         const plotBands = [];
+
+        let areAllGraphsConstant = true;
+
         reports.sort().forEach(report => {
             const [name, data, statsType] = report;
             if (name === 'kind' || name === 'mediaType') {
@@ -664,6 +678,14 @@ function processConnections(connectionIds, data) {
                 '[framesSent/s]', '[framesEncoded/s]', '[keyFramesEncoded/s]', 'frameWidth', 'frameHeight',
             ];
 
+            if (areAllGraphsConstant) {
+                const isConst = isDataConstant(data);
+
+                if (!isConst) {
+                    areAllGraphsConstant = false;
+                }
+            }
+
             series.push({
                 name,
                 data,
@@ -708,6 +730,9 @@ function processConnections(connectionIds, data) {
             }).join(', ');
             const titleElement = document.createElement('summary');
             titleElement.innerText = title;
+            if (areAllGraphsConstant) {
+                titleElement.style.opacity = 0.5;
+            }
             container.appendChild(titleElement);
 
             const d = document.createElement('div');
