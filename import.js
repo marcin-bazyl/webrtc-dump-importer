@@ -184,7 +184,8 @@ function createCandidateTable(container, allStats) {
                 row.appendChild(el);
 
                 el = document.createElement('td');
-                el.innerText = candidate.isRemote ? 'remote' : 'local';
+                const isRemote = (candidate.isRemote !== undefined) ? candidate.isRemote : c === pair.remoteCandidateId;
+                el.innerText = isRemote ? 'remote' : 'local';
                 row.appendChild(el);
 
                 el = document.createElement('td');
