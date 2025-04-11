@@ -22,6 +22,17 @@ function doImport(evt) {
   }
 }
 
+function isArrayConstant(array) {
+    if (array.length === 0) return false;
+
+    const first = array[0];
+
+    for (let i = 1; i < array.length; i++) {
+        if (array[i] !== first) return false;
+    }
+    return true;
+}
+
 function createCandidateTable(container, allStats) {
     const head = document.createElement('tr');
     [
@@ -44,9 +55,14 @@ function createCandidateTable(container, allStats) {
     });
     container.appendChild(head);
 
-    const transports = {};
+    let transports = {};
     const pairs = {};
     const candidates = {};
+
+    // these are used in Firefox dumps
+    const transportsFromCandidatePairs = {};
+    let selectedCandidatePairId;
+
     for (reportname in allStats) {
         let t = reportname.split('-');
         const comp = t.pop();
@@ -67,11 +83,51 @@ function createCandidateTable(container, allStats) {
         } else if (statsType === 'candidate-pair' || reportname.startsWith('RTCIceCandidatePair')) {
             if (!pairs[t]) pairs[t] = {};
             pairs[t][comp] = stats[stats.length - 1];
+
+            if (comp === 'transportId') {
+                // sanity check
+                if (isArrayConstant(stats)) {
+                    const transportId = stats[0];
+
+                    if (!transportsFromCandidatePairs[transportId]) {
+                        transportsFromCandidatePairs[transportId] = {
+                            bytesSent: 0,
+                            bytesReceived: 0,
+                            dtlsState: 'unknown',
+                            selectedCandidatePairId: undefined,
+                            candidatePairIds: [t],
+                        };
+                    } else {
+                        transportsFromCandidatePairs[transportId].candidatePairIds.push(t);
+                    }
+                } else {
+                    console.warn('not all transportId values are the same for candidate-pair', t);
+                }
+            }
+            if (comp === 'selected' && stats[stats.length - 1] === true) {
+                selectedCandidatePairId = t;
+            }
+
         } else if (['local-candidate', 'remote-candidate'].includes(statsType) || reportname.startsWith('RTCIceCandidate')) {
             if (!candidates[t]) candidates[t] = {};
             candidates[t][comp] = stats[stats.length -  1]
         }
     }
+
+    // Firefox doesn't have "transport" stats, so we fall back to retrieving the transport info from candidate-pairs
+    if (Object.keys(transports).length === 0) {
+        // if we've got a selected pair, find the transport for it and update the selectedCandidatePairId in it
+        if (selectedCandidatePairId) {
+            Object.values(transportsFromCandidatePairs).forEach((transport) => {
+                if (transport.candidatePairIds.includes(selectedCandidatePairId)) {
+                    transport.selectedCandidatePairId = selectedCandidatePairId;
+                }
+            });
+        }
+
+        transports = transportsFromCandidatePairs;
+    }
+
     for (t in transports) {
         let row = document.createElement('tr');
 
