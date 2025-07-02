@@ -841,6 +841,55 @@ function processConnections(connectionIds, data) {
     });
 }
 
+/**
+ * Shows or hides all graphs for all connections that have stats matching the provided filters.
+ * If no filters are provided, all graphs will be shown or hidden.
+ * If filters are provided, only graphs that have stats matching ALL the filters will be shown/hidden and the stats will be shown
+ *
+ * @param {boolean} show whether to show or hide the graphs
+ * @param {Array<string>} seriesNameFilters array of data series names to filter by
+ */
+function showAllSeries(show, seriesNameFilters) {
+    Object.keys(graphs).forEach((connId) => {
+        const connectionGraphs = graphs[connId];
+
+        Object.keys(connectionGraphs).forEach((reportName) => {
+            const graph = connectionGraphs[reportName];
+
+            let allSeriesFiltersMatch = false;
+            if (seriesNameFilters) {
+                // we want to show only the graphs that contain data series matching all the names in seriesNameFilters
+                const matchesFound = {};
+                graph.series.forEach((series) => {
+                  if (seriesNameFilters.includes(series.name)) {
+                    matchesFound[series.name] = true;
+                  }
+                });
+
+                allSeriesFiltersMatch = seriesNameFilters.every((filter) => matchesFound[filter]);
+
+                if (allSeriesFiltersMatch) {
+                    // we've found a graph on which we want to show/hide some series, so now go again through all the data series in it
+                    // and set their visibility accordingly
+                    graph.series.forEach((series) => {
+                        series.setVisible(seriesNameFilters.includes(series.name), false);
+                    });
+
+                    graph.redraw();
+                }
+            }
+            // if filters are defined, only toggle the graphs that match all the filters, don't do anything to other graphs
+            // if no filters are defined, toggle all graphs
+            if (allSeriesFiltersMatch || !seriesNameFilters) {
+                const detailsElement = graph.container.parentElement.parentElement;
+                if (detailsElement.open !== show) {
+                    detailsElement.getElementsByTagName('summary')[0].click();
+                }
+            }
+        });
+    });
+}
+
 function filterStatsGraphs(event, container) {
     const filter =  event.target.value;
     const filters = filter.split(',');
@@ -857,3 +906,5 @@ function filterStatsGraphs(event, container) {
         }
     });
 }
+
+window.showAllSeries = showAllSeries
