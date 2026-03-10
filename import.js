@@ -389,10 +389,14 @@ function processTraceEvent(event) {
                 if (['sdpMid', 'sdpMLineIndex'].includes(part[0])) {
                     toShow.push(part.join(': '));
                 } else if (part[0] === 'candidate') {
-                    const candidate = SDPUtils.parseCandidate(part[1].trim());
-                    if (candidate) {
-                        toShow.push('port:' + candidate.port);
-                        toShow.push('type: ' + candidate.type);
+                    try {
+                        const candidate = SDPUtils.parseCandidate(part[1].trim());
+                        if (candidate) {
+                            toShow.push('port:' + candidate.port);
+                            toShow.push('type: ' + candidate.type);
+                        }
+                    } catch (e) {
+                        console.warn('failed to parse candidate', event.value);
                     }
                 } else if (part[0] === 'relayProtocol') {
                     toShow.push('relayProtocol: ' + part[1]);
